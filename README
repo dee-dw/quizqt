@@ -2,3 +2,42 @@ quizqt
 ======
 
 Quiz application written in Qt
+
+
+Compiling
+---------
+
+For compiling the program you must install Qt4 (v4.8 or later).
+
+Then:
+
+$ cd libquizqt
+$ qmake
+$ make
+$ cd ..
+$ qmake
+$ make
+
+Starting the program:
+
+$ LD_LIBRARY_PATH=./ ./quizqt
+
+
+Adding questions
+----------------
+
+You can load a CSV-file in the app. The file should have this structure:
+
+Category;Subcategory;Question;Answer;Points
+
+See the file "quiz-example.csv" for an example.
+
+It's possible to add a question to more than one category:
+
+Category1,Category2;Subcategory;Question;Answer;Points
+
+The "Points" must be one of 100, 200, 300 or 400.
+
+Currently you need to have at least four questions for each point value
+if you want to start a game.
+

@@ -22,6 +22,7 @@
 
 #include "quizcategory.hh"
 #include "quizentry.hh"
+#include "quizerror.hh"
 
 #include <QList>
 #include <QMap>
@@ -43,10 +44,9 @@ class QuizDatabase
      * Loads the questions from csv file and store it in the database.
      * 
      * @param fileName Filename for the csv file
-     * @return true if file could be opened and all data extracted,
-     * else false
+     * @return Error state that tells if everything was okay
      */
-    bool load( const QString& fileName );
+    QuizError load( const QString& fileName );
     
     /**
      * @return list of categories
@@ -73,10 +73,10 @@ class QuizDatabase
      * 
      * @param categories List with category and subcategory
      * @param List with pointers to entries for each of the point values.
-     * @return true if everything went fine or false if there was an error.
+     * @return Error state that tells if everything was okay
      */
-    bool selectEntries( const QList<QuizCategory>& categories,
-                        QList<QuizEntryPointers>& entries );
+    QuizError selectEntries( const QList<QuizCategory>& categories,
+                             QList<QuizEntryPointers>& entries );
 
     /**
      * Add unused entries from the list.
@@ -135,18 +135,24 @@ class QuizDatabase
 
     /**
      * Get question block for quiz.
+     */
+    QuizError getQuizEntryPointers( QuizEntryPointers& entryPointers,
+                                    const QuizCategory& category );
+
+    /**
+     * Get question block for quiz.
      * 
      * This is for random questions.
      */
-    bool getQuizEntryPointers( QuizEntryPointers& entryPointers );
+    QuizError getQuizEntryPointers( QuizEntryPointers& entryPointers );
 
     /**
      * Get question block for quiz.
      * 
      * This is for random questions in a specific category.
      */
-    bool getQuizEntryPointers( QuizEntryPointers& entryPointers,
-                               const QString& category );
+    QuizError getQuizEntryPointers( QuizEntryPointers& entryPointers,
+                                    const QString& category );
 
 
     /**
@@ -154,9 +160,9 @@ class QuizDatabase
      * 
      * This is for questions with specific category and subcategory
      */
-    bool getQuizEntryPointers( QuizEntryPointers& entryPointers,
-                               const QString& category,
-                               const QString& subcategory );
+    QuizError getQuizEntryPointers( QuizEntryPointers& entryPointers,
+                                    const QString& category,
+                                    const QString& subcategory );
 
 
     /**

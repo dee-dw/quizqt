@@ -1,6 +1,7 @@
 HEADERS = quizbutton.hh \
           quizcategoryselection.hh \
           quizdialog.hh \
+          quizerrormessagebox.hh \
           quizplayerbutton.hh \
           quizquestiondialog.hh \
           quizsubcategoryselection.hh \
@@ -9,6 +10,7 @@ HEADERS = quizbutton.hh \
 SOURCES = quizbutton.cpp \
           quizcategoryselection.cpp \
           quizdialog.cpp \
+          quizerrormessagebox.cpp \
           quizplayerbutton.cpp \
           quizquestiondialog.cpp \
           quizsubcategoryselection.cpp \

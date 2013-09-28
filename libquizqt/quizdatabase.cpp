@@ -28,9 +28,9 @@
 #include <QTime>
 
 // Loads the questions from csv file and store it in the database.
-bool QuizDatabase::load( const QString& fileName )
+QuizError QuizDatabase::load( const QString& fileName )
 {
-    bool retVal = false;
+    QuizError error;
     
     if ( !fileName.isEmpty() )
     {
@@ -49,17 +49,35 @@ bool QuizDatabase::load( const QString& fileName )
                 // process the read lines
                 if ( !readCsvLine(newEntries,line) )
                 {
-                   return false;
+                    error.state = QUIZ_ES_READING_LINE_ERROR;
+                    error.file = fileName;
+                    error.line = line;
+                    break;
                 }
             }
             file.close();
 
-            // Everything seems fine, so we can copy the entries
-            retVal = setData(newEntries);
+            if ( error.noError() )
+            {
+                // Everything seems fine, so we can copy the entries
+                if ( !setData(newEntries) )
+                {
+                    error.state = QUIZ_ES_ADD_ENTRY_NOT_POSSIBLE;
+                }
+            }
+        }
+        else
+        {
+            error.state = QUIZ_ES_COULD_NOT_OPEN_FILE;
+            error.file = fileName;
         }
     }
+    else
+    {
+        error.state = QUIZ_ES_EMPTY_FILENAME;
+    }
 
-    return retVal;
+    return error;
 }
 
 // Reads a single semicolon separated line.
@@ -292,13 +310,11 @@ bool QuizDatabase::removeEntryPtr( QuizEntry* entryP )
 }
 
 // Try to select the entries for the quiz.
-bool QuizDatabase::selectEntries( const QList<QuizCategory>& categories,
-                                  QList<QuizEntryPointers>& entries )
+QuizError QuizDatabase::selectEntries( const QList<QuizCategory>& categories,
+                                       QList<QuizEntryPointers>& entries )
 {
     QTime now = QTime::currentTime();
     qsrand(now.msec());
-    
-    bool retVal = false;
     
     // First we must sort the categories in the right order. That means that
     // we first must select the questions for specific categories like
@@ -322,32 +338,17 @@ bool QuizDatabase::selectEntries( const QList<QuizCategory>& categories,
 
     // Now iterate over all categories and get the right questions.
     QList<QuizEntryPointers> tmpEntries;
-    retVal = true;
+    QuizError error;
     
     for ( int ii = 0; ii < tmpCategories.size(); ii++ )
     {
         QuizEntryPointers entryPointers;
         
-        if ( tmpCategories[ii].isRandom() )
-        {
-            retVal = getQuizEntryPointers(entryPointers);
-            
-        }
-        else if ( tmpCategories[ii].isRandomSub() )
-        {
-            retVal = getQuizEntryPointers( entryPointers,
-                                           tmpCategories[ii].category() );
-        }
-        else
-        {
-            retVal = getQuizEntryPointers( entryPointers,
-                                           tmpCategories[ii].category(),
-                                           tmpCategories[ii].subcategory() );
-        }
+        error = getQuizEntryPointers( entryPointers, tmpCategories[ii] );
         
-        if ( retVal )
+        if ( error.noError() )
         {
-                tmpEntries.append(entryPointers);
+            tmpEntries.append( entryPointers );
         }
         else
         {
@@ -355,7 +356,7 @@ bool QuizDatabase::selectEntries( const QList<QuizCategory>& categories,
         }
     }
     
-    if ( !retVal )
+    if ( !error.noError() )
     {
         // we need to to a rollback and insert the selected questions
         // into the database again.
@@ -386,7 +387,7 @@ bool QuizDatabase::selectEntries( const QList<QuizCategory>& categories,
         }
     }
 
-    return retVal;
+    return error;
 }
 
 // Add unused entries from the list.
@@ -414,14 +415,42 @@ bool QuizDatabase::addUnusedEntries( QList<QuizEntryPointers>& entries )
 }
 
 // Get question block for quiz.
-bool QuizDatabase::getQuizEntryPointers( QuizEntryPointers& entryPointers )
+QuizError QuizDatabase::getQuizEntryPointers( QuizEntryPointers& entryPointers,
+                                              const QuizCategory& category )
 {
-    bool retVal = false;
+    QuizError error;
+    
+    if ( category.isRandom() )
+    {
+        error = getQuizEntryPointers(entryPointers);
+    }
+    else if ( category.isRandomSub() )
+    {
+        error = getQuizEntryPointers( entryPointers,
+                                      category.category() );
+    }
+    else
+    {
+        error = getQuizEntryPointers( entryPointers,
+                                      category.category(),
+                                      category.subcategory() );
+    }
+    
+    if ( !error.noError() )
+    {
+        error.category = category;
+    }
+
+    return error;
+}
+
+// Get question block for quiz.
+QuizError QuizDatabase::getQuizEntryPointers( QuizEntryPointers& entryPointers )
+{
+    QuizError error;
     
     if ( isOneQuestionBlockLeft() )
     {
-        retVal = true;
-        
         for ( int ii = 0; ii < QuizEntry::numQuestionsPerCategory; ii++ )
         {
             const int max = mEntryMap[ii].size();
@@ -431,31 +460,33 @@ bool QuizDatabase::getQuizEntryPointers( QuizEntryPointers& entryPointers )
                 entryPointers.entriesP[ii] = mEntryMap[ii][index];
                 if ( !removeEntryPtr( entryPointers.entriesP[ii] ) )
                 {
-                    retVal = false;
+                    error.state = QUIZ_ES_REMOVE_ENTRY_NOT_POSSIBLE;
                     break;
                 }
             }
             else
             {
-                retVal = false;
+                error.state = QUIZ_ES_OUT_OF_QUESTIONS;
                 break;
             }
         }
     }
+    else
+    {
+        error.state = QUIZ_ES_OUT_OF_QUESTIONS;
+    }
     
-    return retVal;
+    return error;
 }
 
 // Get question block for quiz.
-bool QuizDatabase::getQuizEntryPointers( QuizEntryPointers& entryPointers,
+QuizError QuizDatabase::getQuizEntryPointers( QuizEntryPointers& entryPointers,
                                          const QString& category )
 {
-    bool retVal = false;
+    QuizError error;
     
     if ( isOneQuestionBlockLeft(category) )
     {
-        retVal = true;
-        
         for ( int ii = 0; ii < QuizEntry::numQuestionsPerCategory; ii++ )
         {
             const int max = mCategoryEntryMap[ii][category].size();
@@ -465,32 +496,34 @@ bool QuizDatabase::getQuizEntryPointers( QuizEntryPointers& entryPointers,
                 entryPointers.entriesP[ii] = mCategoryEntryMap[ii][category][index];
                 if ( !removeEntryPtr( entryPointers.entriesP[ii] ) )
                 {
-                    retVal = false;
+                    error.state = QUIZ_ES_REMOVE_ENTRY_NOT_POSSIBLE;
                     break;
                 }
             }
             else
             {
-                retVal = false;
+                error.state = QUIZ_ES_OUT_OF_QUESTIONS;
                 break;
             }
         }
     }
-    
-    return retVal;
+    else
+    {
+        error.state = QUIZ_ES_OUT_OF_QUESTIONS;
+    }
+
+    return error;
 }
 
 // Get question block for quiz.
-bool QuizDatabase::getQuizEntryPointers( QuizEntryPointers& entryPointers,
+QuizError QuizDatabase::getQuizEntryPointers( QuizEntryPointers& entryPointers,
                                          const QString& category,
                                          const QString& subcategory )
 {
-    bool retVal = false;
+    QuizError error;
     
     if ( isOneQuestionBlockLeft(category,subcategory) )
     {
-        retVal = true;
-        
         for ( int ii = 0; ii < QuizEntry::numQuestionsPerCategory; ii++ )
         {
             const int max = mSubCategoryEntryMap[ii][category+subcategory].size();
@@ -500,19 +533,23 @@ bool QuizDatabase::getQuizEntryPointers( QuizEntryPointers& entryPointers,
                 entryPointers.entriesP[ii] = mSubCategoryEntryMap[ii][category+subcategory][index];
                 if ( !removeEntryPtr( entryPointers.entriesP[ii] ) )
                 {
-                    retVal = false;
+                    error.state = QUIZ_ES_REMOVE_ENTRY_NOT_POSSIBLE;
                     break;
                 }
             }
             else
             {
-                retVal = false;
+                error.state = QUIZ_ES_OUT_OF_QUESTIONS;
                 break;
             }
         }
     }
+    else
+    {
+        error.state = QUIZ_ES_OUT_OF_QUESTIONS;
+    }
     
-    return retVal;
+    return error;
 }
 
 // Check if there is at least one question block left

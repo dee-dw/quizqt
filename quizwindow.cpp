@@ -21,6 +21,8 @@
 #include "quizcategory.hh"
 #include "quizcategoryselection.hh"
 #include "quizdialog.hh"
+#include "quizerror.hh"
+#include "quizerrormessagebox.hh"
 #include "quizsubcategoryselection.hh"
 #include "quizplayer.hh"
 
@@ -116,7 +118,9 @@ void QuizWindow::loadQuestions()
     
     if ( !fileName.isEmpty() )
     {
-        if ( mDataBase.load(fileName) )
+        QuizError error = mDataBase.load(fileName);
+        
+        if ( error.noError() )
         {
             // Update all combo boxes
             for ( int ii = 0; ii < mMaxNumberCategories; ii++ )
@@ -126,8 +130,7 @@ void QuizWindow::loadQuestions()
         }
         else
         {
-            // TODO: Use better error state.
-            QMessageBox::critical( this, tr("Error reading csv file"), tr("There was an error reading the csv file with the questions.\n\nPlease check the file and try again.") );
+            QuizErrorMessageBox::show( this, error );
         }
     }
 }
@@ -149,7 +152,9 @@ void QuizWindow::startQuiz()
     // the different points.
     // This will not mark the entries as used!
     QList<QuizEntryPointers> selectedEntries;
-    if ( mDataBase.selectEntries( selectedCategories, selectedEntries ) )
+    QuizError error = mDataBase.selectEntries( selectedCategories, selectedEntries );
+    
+    if ( error.noError() )
     {
         // get player names
         QList<QuizPlayer> players;
@@ -162,12 +167,11 @@ void QuizWindow::startQuiz()
         QuizDialog dialog( selectedCategories, selectedEntries, players );
         dialog.exec();
         
-        // Readd all unused questions of there were any
+        // Readd all unused questions if there were any
         mDataBase.addUnusedEntries( selectedEntries );
     }
     else
     {
-        // TODO: Use better error state.
-        QMessageBox::critical( this, tr("Error selecting entries"), tr("There was an error selecting the questions for the quiz.\n\nPlease try other categories.") );
+        QuizErrorMessageBox::show( this, error );
     }
 }

@@ -81,6 +81,10 @@ QuizDialog::QuizDialog( const QList<QuizCategory>& categories,
         playerLayoutP->addStretch();
     }
     
+    QPushButton* closeButtonP = new QPushButton( tr("&Close") );
+    connect(closeButtonP, SIGNAL(clicked()), this, SLOT(close()));
+    playerLayoutP->addWidget( closeButtonP );
+    
     QVBoxLayout* dialogLayoutP = new QVBoxLayout;
     dialogLayoutP->addLayout(questionLayoutP);
     dialogLayoutP->addLayout(playerLayoutP);
@@ -108,3 +112,50 @@ void QuizDialog::showQuestion(const int column, const int row, QuizEntry* entryP
     // mark entry as used
     entryP->setUsed();
 }
+
+// Close dialog.
+void QuizDialog::closeEvent(QCloseEvent *event)
+{
+    if ( mPlayers.size() > 0 )
+    {
+        // Checking which player has won!
+        int winnerIndex = 0;
+        QStringList winners;
+        
+        for ( int ii = 0; ii < mPlayers.size(); ii++ )
+        {
+            if ( mPlayers[ii].getPoints() > mPlayers[winnerIndex].getPoints() )
+            {
+                winnerIndex = ii;
+                winners.clear();
+                winners.append( mPlayers[ii].getName() );
+            }
+            else if ( mPlayers[ii].getPoints() == mPlayers[winnerIndex].getPoints() )
+            {
+                winners.append( mPlayers[ii].getName() );
+            }
+        }
+
+        QString text;
+
+        if ( winners.size() == 1 )
+        {
+            text += winners[0] + tr(" has won the game.");
+            text += tr("\n\nCongratulation!");
+        }
+        else
+        {
+            text += tr("There are several winners:\n\n");
+            text += winners.join(", ");
+            text += tr("\n\nCongratulation!");
+        }
+
+        QMessageBox::information( this, tr("And the winner is ..."), text );
+        
+    }
+    // else we do not have enough players and shouldn't have started
+    // the quiz at all!
+    
+    event->accept();
+}
+

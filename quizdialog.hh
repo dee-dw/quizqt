@@ -31,6 +31,7 @@
 
 // Forward declarations.
 class QuizButton;
+class QCloseEvent;
 class QLabel;
 
 /**
@@ -55,6 +56,12 @@ class QuizDialog : public QDialog
      * Show the question under this coordinates.
      */
     void showQuestion(const int column, const int row, QuizEntry* entryP);
+
+  protected:
+    /**
+     * Close dialog.
+     */
+    virtual void closeEvent(QCloseEvent *event);
 
   private:
     /**
